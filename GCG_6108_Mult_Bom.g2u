@@ -1,0 +1,268 @@
+Program.Sub.ScreenSU.Start
+Gui.MultBOMExp..Create
+Gui.MultBOMExp..Caption("Multi-Level BOM Explosion")
+Gui.MultBOMExp..Size(4485,1665)
+Gui.MultBOMExp..MinX(0)
+Gui.MultBOMExp..MinY(0)
+Gui.MultBOMExp..Position(0,0)
+Gui.MultBOMExp..BackColor(-2147483633)
+Gui.MultBOMExp..MousePointer(0)
+Gui.MultBOMExp..Event(UnLoad,MultBOMExp_UnLoad)
+Gui.MultBOMExp.lblParent.Create(Label,"Select BOM Parent",True,1935,255,0,120,195,True,0,"Arial",8,-2147483633,0)
+Gui.MultBOMExp.txtParent.Create(TextBox,"",True,2295,300,0,120,405,True,0,"Arial",8,-2147483643,1)
+Gui.MultBOMExp.txtParent.Event(GotFocus,txtParent_GotFocus)
+Gui.MultBOMExp.txtParent.Event(LostFocus,txtParent_LostFocus)
+Gui.MultBOMExp.cmdParent.Create(Button)
+Gui.MultBOMExp.cmdParent.Size(450,375)
+Gui.MultBOMExp.cmdParent.Position(2505,360)
+Gui.MultBOMExp.cmdParent.Caption("^")
+Gui.MultBOMExp.cmdParent.Event(Click,cmdParent_Click)
+Gui.MultBOMExp.cmdPrint.Create(Button)
+Gui.MultBOMExp.cmdPrint.Size(855,375)
+Gui.MultBOMExp.cmdPrint.Position(120,795)
+Gui.MultBOMExp.cmdPrint.Caption("Print")
+Gui.MultBOMExp.cmdPrint.Event(Click,cmdPrint_Click)
+Gui.MultBOMExp.txtBomLvl.Create(TextBox,"",True,975,300,0,3135,405,True,0,"Arial",8,-2147483643,1)
+Gui.MultBOMExp.txtBomLvl.NumericOnly(1)
+Gui.MultBOMExp.lblBomLvl.Create(Label,"Bom Level",True,1050,255,0,3150,195,True,0,"Arial",8,-2147483633,0)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+
+Gui.MultBOMExp.txtBomLvl.Text("-1")
+
+Gui.MultBOMExp..Show
+
+Gui.MultBOMExp..AlwaysOnTop(True)
+Gui.MultBOMExp..AlwaysOnTop(False)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6108_Mult_Bom.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(MultBOMExp_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Main.End
+
+Program.Sub.Get_Data.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+V.Local.sSql.Declare(String,"")
+V.Local.sTopParent.Declare(String,"")
+V.Local.iLvl.Declare(Long,0)
+V.Local.iC.Declare(Long,0)
+V.Local.iBIRUNID.Declare(Long,0)
+V.Local.iLogID.Declare(Long,0)
+V.Local.iRet.Declare(Long,0)
+V.Local.iRPT.Declare(Long,0)
+V.Local.sFilter.Declare(String,"")
+
+Gui.MultBOMExp..Visible(False)
+
+V.Local.sTopParent.Set(V.Args.Parent)
+
+F.Global.BI.GetRunID(V.Local.iBIRUNID)
+
+F.Global.BI.GetIDFromName("GCG_6108_Mult_Bom.rpt",V.Local.iRPT)
+F.Global.BI.StartLogging(V.Local.iBIRUNID,V.Local.iRPT,-1,"",V.Local.iLogID)
+
+F.Intrinsic.String.Build("Select Cast(0 as INT) as BIRUNID, a.Parent, a.Part, a.Quantity, a.Sequence_Bom, Cast(0 as INT) as Level, Cast(0 as Int) as Key_Seq, b.Description, c.Description_2, c.Description_3 From V_Bom_Mstr a Left Join V_BOM_ENG b on a.Parent = b.Part Left Join V_Inventory_Mst2 c on a.Parent = c.Part where a.Parent = '{0}' and a.Part = ''",V.Local.sTopParent,V.Local.sSql)
+
+F.Data.DataTable.CreateFromSQL("BOM","con",V.Local.sSql,True)
+
+V.Local.iLvl.Set(1)
+
+'Get Lvl 1s
+F.Intrinsic.String.Build("Select a.Parent, a.Part, a.Quantity, a.Sequence_Bom, Cast(0 as INT) as Level, Cast(0 as Int) as Key_Seq, b.Description, c.Description_2, c.Description_3 From V_Bom_Mstr a Left Join V_BOM_ENG b on a.Part = b.Part Left Join V_Inventory_Mst2 c on b.Part = c.Part where a.Parent = '{0}' and a.Part <> ''",V.Local.sTopParent,V.Local.iLvl,V.Local.sSql)
+
+F.Data.DataTable.CreateFromSQL("BOM2","con",V.Local.sSql,True)
+F.Intrinsic.Control.For(V.Local.iC,0,V.DataTable.BOM2.RowCount--,1)
+	F.Data.DataTable.AddRow("BOM","Parent",V.DataTable.BOM2(V.Local.iC).Parent!FieldValTrim,"Part",V.DataTable.BOM2(V.Local.iC).Part!FieldValTrim,"Quantity",V.DataTable.BOM2(V.Local.iC).Quantity!FieldVal,"Sequence_Bom",V.DataTable.BOM2(V.Local.iC).Sequence_Bom!FieldValTrim,"Level",V.Local.iLvl,"Key_Seq",V.DataTable.BOM.RowCount,"Description",V.DataTable.BOM2(V.Local.iC).Description!FieldVal,"Description_2",V.DataTable.BOM2(V.Local.iC).Description_2!FieldVal,"Description_3",V.DataTable.BOM2(V.Local.iC).Description_3!FieldVal)
+	F.Intrinsic.Control.CallSub("Child_Data","Level",V.Local.iLvl,"Parent",V.DataTable.BOM2(V.Local.iC).Part!FieldValTrim)
+F.Intrinsic.Control.Next(V.Local.iC)
+
+F.Intrinsic.Control.If(V.Screen.MultBOMExp!txtBomLvl.Text,<=,"-1","OR",V.Screen.MultBOMExp!txtBomLvl.Text,=,"")
+	F.Data.DataView.Create("Bom","VBom",22,"","Key_Seq")
+	F.Data.DataView.ToDataTable("Bom","VBom","BOMSave",True)
+	F.Data.DataView.Close("Bom","VBom")
+F.Intrinsic.Control.Else
+	F.Intrinsic.Math.Add(V.Screen.MultBOMExp!txtBomLvl.Text,1,V.Local.iRet)
+	F.Intrinsic.String.Build("[Level] <= {0}",V.Local.iRet,V.Local.sFilter)
+	F.Data.DataView.Create("Bom","VBom",22,V.Local.sFilter,"Key_Seq")
+	F.Data.DataView.ToDataTable("Bom","VBom","BOMSave",True)
+	F.Data.DataView.Close("Bom","VBom")
+	F.Intrinsic.Control.For(V.Local.iC,0,V.DataTable.BomSave.RowCount--,1)
+		F.Intrinsic.Math.Add(V.Local.iC,1,V.Local.iRet)
+		F.Data.DataTable.SetValue("BOMSave",V.Local.iC,"Key_Seq",V.Local.iRet)
+	F.Intrinsic.Control.Next(V.Local.iC)
+F.Intrinsic.Control.EndIf
+
+F.Global.BI.StopLogging(V.Local.iLogID)
+
+F.Intrinsic.Control.If(V.DataTable.BOM.RowCount--,<>,-1)
+	F.Data.DataTable.SetValue("BOMSave",-1,"BIRUNID",V.Local.iBIRUNID)
+	
+	F.Intrinsic.String.Build("Delete From GCG_6108_Mult_Bom Where BirunID = {0}",V.Local.iBIRUNID,V.Local.sSql)
+	F.ODBC.Connection!Con.Execute(V.Local.sSql)
+	F.Data.DataTable.SaveToDB("BOMSave","con","GCG_6108_Mult_Bom","",128,"BIRUNID@!@BIRUNID*!*Parent@!@Parent*!*Part@!@Part*!*Quantity@!@Quantity*!*Sequence_Bom@!@Sequence_Bom*!*Level@!@Level*!*Key_Seq@!@Key_Seq*!*Description@!@Description*!*Description_2@!@Description_2*!*Description_3@!@Description_3")
+	F.Global.BI.RunReportPreProcessor(V.Local.iBIRUNID,V.Local.iLogID,"","","",-1,True,"",-1,"",-1,"","",V.Local.iRet)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6108_Mult_Bom.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(MultBOMExp_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.Get_Data.End
+
+Program.Sub.Child_Data.Start
+V.Local.sSql.Declare
+V.Local.iLvl.Declare
+V.Local.iC.Declare
+
+F.Intrinsic.Math.Add(V.Args.Level.Long,1,V.Local.iLvl)
+
+'Get Lvl 1s
+F.Intrinsic.String.Build("Select a.Parent, a.Part, a.Quantity, a.Sequence_Bom, Cast(0 as INT) as Level, Cast(0 as Int) as Key_Seq, b.Description, c.Description_2, c.Description_3 From V_Bom_Mstr a Left Join V_BOM_ENG b on a.Part = b.Part Left Join V_Inventory_Mst2 c on b.Part = c.Part where a.Parent = '{0}' and a.Part <> '' and a.Part <> '{0}'",V.Args.Parent,V.Local.iLvl,V.Local.sSql)
+
+F.Data.DataTable.CreateFromSQL(V.Args.Parent,"con",V.Local.sSql,True)
+F.Intrinsic.Control.For(V.Local.iC,0,V.DataTable.[V.Args.Parent].RowCount--,1)
+	F.Data.DataTable.AddRow("BOM","Parent",V.DataTable.[V.Args.Parent](V.Local.iC).Parent!FieldValTrim,"Part",V.DataTable.[V.Args.Parent](V.Local.iC).Part!FieldValTrim,"Quantity",V.DataTable.[V.Args.Parent](V.Local.iC).Quantity!FieldVal,"Sequence_Bom",V.DataTable.[V.Args.Parent](V.Local.iC).Sequence_Bom!FieldValTrim,"Level",V.Local.iLvl,"Key_Seq",V.DataTable.BOM.RowCount,"Description",V.DataTable.[V.Args.Parent](V.Local.iC).Description!FieldVal,"Description_2",V.DataTable.[V.Args.Parent](V.Local.iC).Description_2!FieldVal,"Description_3",V.DataTable.[V.Args.Parent](V.Local.iC).Description_3!FieldVal)
+	F.Intrinsic.Control.CallSub("Child_Data","Level",V.Local.iLvl,"Parent",V.DataTable.[V.Args.Parent](V.Local.iC).Part!FieldValTrim)
+F.Intrinsic.Control.Next(V.Local.iC)
+F.Data.DataTable.Close(V.Args.Parent)
+Program.Sub.Child_Data.End
+
+Program.Sub.MultBOMExp_UnLoad.Start
+F.Intrinsic.Control.SetErrorHandler("MultBOMExp_UnLoad_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+
+F.Intrinsic.Control.End
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("MultBOMExp_UnLoad_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6108_Mult_Bom.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+Function.Intrinsic.Control.EndIf
+Program.Sub.MultBOMExp_UnLoad.End
+
+Program.Sub.cmdPrint_Click.Start
+F.Intrinsic.Control.SetErrorHandler("cmdPrint_Click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+
+F.Intrinsic.Control.If(V.Screen.MultBOMExp!txtParent.Text,<>,"")
+	F.ODBC.Connection!Con.OpenCompanyConnection
+	F.Intrinsic.Control.CallSub(Get_Data,"Parent",V.Screen.MultBOMExp!txtParent.Text)
+	F.ODBC.Connection!Con.Close
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.CallSub(MultBOMExp_UnLoad)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdPrint_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6108_Mult_Bom.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(MultBOMExp_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.cmdPrint_Click.End
+
+Program.Sub.txtParent_GotFocus.Start
+F.Intrinsic.Control.SetErrorHandler("txtParent_GotFocus_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+
+Gui.MultBOMExp.txtParent.SelectAll
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("txtParent_GotFocus_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6108_Mult_Bom.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(MultBOMExp_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.txtParent_GotFocus.End
+
+Program.Sub.txtParent_LostFocus.Start
+F.Intrinsic.Control.SetErrorHandler("txtParent_LostFocus_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+V.Local.sParent.Declare(String,"")
+V.Local.sSql.Declare(String,"")
+
+V.Local.sParent.Set(V.Screen.MultBOMExp!txtParent.Text)
+
+F.Intrinsic.Control.If(V.Local.sParent.Trim,<>,"")
+	F.ODBC.Connection!Con.OpenCompanyConnection
+	F.Intrinsic.String.Build("Select Parent From V_Bom_Mstr Where ucase(Parent) = '{0}'",V.Local.sParent.UCase,V.Local.sSql)
+	F.ODBC.Connection!Con.ExecuteAndReturn(V.Local.sSql,V.Local.sSql)
+	F.Intrinsic.Control.If(V.Local.sSql,=,"")
+		F.Intrinsic.UI.Msgbox("Invalid Parent Number","Attention")
+		F.Intrinsic.Control.BlockEvents
+		Gui.MultBOMExp.txtParent.Text("")
+		F.Intrinsic.Control.UnBlockEvents
+	F.Intrinsic.Control.EndIf
+
+	F.ODBC.Connection!con.Close
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("txtParent_LostFocus_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6108_Mult_Bom.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(MultBOMExp_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.txtParent_LostFocus.End
+
+Program.Sub.cmdParent_Click.Start
+F.Intrinsic.Control.SetErrorHandler("cmdParent_Click_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+V.Local.sParent.Declare(String,"")
+
+F.Intrinsic.UI.SetBrowserHotTypeAhead(True)
+
+F.Intrinsic.UI.Browser(3000,"",V.Local.sParent)
+
+F.Intrinsic.Control.If(V.Local.sParent,<>,"***CANCEL***")
+	F.Intrinsic.String.Split(V.Local.sParent,"*!*",V.Local.sParent)
+	Gui.MultBOMExp.txtParent.Text(V.Local.sParent.UCase)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("cmdParent_Click_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: GCG_6108_Mult_Bom.g2u {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.CallSub(MultBOMExp_UnLoad)
+Function.Intrinsic.Control.EndIf
+Program.Sub.cmdParent_Click.End
